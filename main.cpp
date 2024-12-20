@@ -2,6 +2,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <map>
 
 using namespace std;
 
@@ -52,6 +54,14 @@ public:
     }
 
     virtual TestCaseBase* clone() const = 0;
+
+    const string& getInput() const {
+        return input;
+    }
+
+    const string& getExpected() const {
+        return expected;
+    }
 };
 
 // Класс TestCase - производный от TestCaseBase
@@ -81,6 +91,10 @@ public:
 
     AdvancedTestCase* clone() const override {
         return new AdvancedTestCase(input, expected, complexityLevel);
+    }
+
+    int getComplexityLevel() const {
+        return complexityLevel;
     }
 };
 
@@ -141,127 +155,43 @@ public:
         return description;
     }
 
-    const TestSuite& getTestSuite() const {
+    TestSuite& getTestSuite() {
         return testSuite;
     }
 };
 
-// Класс UserSolution
-class UserSolution {
-private:
-    string solutionCode;
-
-public:
-    UserSolution(const string& code)
-        : solutionCode(code) {}
-
-    const string& getSolutionCode() const {
-        return solutionCode;
-    }
-};
-
-// Класс ExecutionResult
-class ExecutionResult {
-private:
-    string actualOutput;
-    bool isPassed;
-
-public:
-    ExecutionResult() : isPassed(false) {}
-
-    void setActualOutput(const string& output) {
-        actualOutput = output;
-    }
-
-    const string& getActualOutput() const {
-        return actualOutput;
-    }
-
-    void setIsPassed(bool passed) {
-        isPassed = passed;
-    }
-
-    bool getIsPassed() const {
-        return isPassed;
-    }
-};
-
-// Класс Submission
-class Submission {
-private:
-    UserSolution solution;
-    vector<ExecutionResult> results;
-    int totalPassed;
-
-public:
-    Submission(const UserSolution& userSolution, int testCount)
-        : solution(userSolution), totalPassed(0) {
-        results.resize(testCount);
-    }
-
-    void setTotalPassed(int passed) {
-        totalPassed = passed;
-    }
-
-    int getTotalPassed() const {
-        return totalPassed;
-    }
-
-    vector<ExecutionResult>& getResults() {
-        return results;
-    }
-
-    const UserSolution& getSolution() const {
-        return solution;
-    }
-};
-
-// Функция для выполнения теста
-ExecutionResult runTestCase(UserSolution& solution, const TestCaseBase& test) {
-    ExecutionResult result;
-    result.setActualOutput(test.runTest() ? "Passed" : "Failed");
-    result.setIsPassed(test.runTest());
-    return result;
-}
-
-// Функция для проверки решения
-Submission checkSolution(UserSolution& solution, Task& task) {
-    Submission submission(solution, task.getTestSuite().getTestCount());
-    int totalPassed = 0;
-    for (size_t i = 0; i < task.getTestSuite().getTestCount(); ++i) {
-        const TestCaseBase& test = *task.getTestSuite().getTests()[i];
-        ExecutionResult result = runTestCase(solution, test);
-        submission.getResults()[i] = result;
-        if (result.getIsPassed()) {
-            totalPassed++;
-        }
-    }
-    submission.setTotalPassed(totalPassed);
-    return submission;
-}
-
 // Главная функция
 int main() {
-    auto test1 = new TestCase("input1", "input1", make_unique<SimpleTestRunner>());
-    auto test2 = new AdvancedTestCase("input2", "expected2", 3);
+    auto test1 = make_shared<TestCase>("input3", "expected3", make_unique<SimpleTestRunner>());
+    auto test2 = make_shared<AdvancedTestCase>("input1", "expected1", 5);
+    auto test3 = make_shared<AdvancedTestCase>("input2", "expected2", 4);
 
     TestSuite suite;
     suite.addTest(test1);
     suite.addTest(test2);
+    suite.addTest(test3);
 
-    Task task("Example Task", suite);
-
-    UserSolution solution("user_solution_code");
-
-    Submission submission = checkSolution(solution, task);
-
-    cout << "Total tests passed: " << submission.getTotalPassed() << " out of " << suite.getTestCount() << endl;
-
-    for (size_t i = 0; i < suite.getTestCount(); i++) {
-        cout << "Test " << (i + 1) << ": " << (submission.getResults()[i].getIsPassed() ? "Passed" : "Failed") << endl;
+    cout << "Before sorting tests:" << endl;
+    for (const auto& test : suite.getTests()) {
+        cout << "Test Input: " << test->getInput() << endl;
     }
 
-    cout << "Total Test Suites Created: " << TestSuite::getTotalTestSuitesCreated() << endl;
+    suite.sortTestsByInput();
+
+    cout << "\nAfter sorting tests:" << endl;
+    for (const auto& test : suite.getTests()) {
+        cout << "Test Input: " << test->getInput() << endl;
+    }
+
+    cout << "\nSearching for test with expected output 'expected2':" << endl;
+    auto foundTest = suite.findTestByExpected("expected2");
+    if (foundTest) {
+        cout << "Found test with input: " << foundTest->getInput() << endl;
+    } else {
+        cout << "Test not found." << endl;
+    }
+
+    cout << "\nTotal Test Suites Created: " << TestSuite::getTotalTestSuitesCreated() << endl;
 
     return 0;
 }
